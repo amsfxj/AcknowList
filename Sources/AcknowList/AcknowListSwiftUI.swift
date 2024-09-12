@@ -44,16 +44,25 @@ public struct AcknowListSwiftUIView: View {
     /// Footer text to be displayed below the list of the acknowledgements.
     public var footerText: String?
 
-    public init(acknowList: AcknowList) {
+    let showHandler: ((Acknow) -> Void)?
+
+    public init(acknowList: AcknowList, showHandler: ((Acknow) -> Void)? = nil) {
         acknowledgements = acknowList.acknowledgements
         headerText = acknowList.headerText
         footerText = acknowList.footerText
+        self.showHandler = showHandler
     }
 
-    public init(acknowledgements: [Acknow], headerText: String? = nil, footerText: String? = nil) {
+    public init(
+        acknowledgements: [Acknow],
+        headerText: String? = nil,
+        footerText: String? = nil,
+        showHandler: ((Acknow) -> Void)? = nil
+    ) {
         self.acknowledgements = acknowledgements
         self.headerText = headerText
         self.footerText = footerText
+        self.showHandler = showHandler
     }
 
     public init(plistFileURL: URL) {
@@ -88,25 +97,24 @@ public struct AcknowListSwiftUIView: View {
     }
 
     public var body: some View {
-        #if os(iOS) || os(tvOS)
         List {
             Section(header: HeaderFooter(text: headerText), footer: HeaderFooter(text: footerText)) {
                 ForEach (acknowledgements) { acknowledgement in
-                    AcknowListRowSwiftUIView(acknowledgement: acknowledgement)
+                    AcknowListRowSwiftUIView(acknowledgement: acknowledgement, showHandler: showHandler == nil ? nil : {
+                        showHandler?(acknowledgement)
+                    })
                 }
             }
         }
+        #if os(iOS) || os(tvOS)
         .listStyle(GroupedListStyle())
         .navigationBarTitle(Text(AcknowLocalization.localizedTitle()))
-        #else
-        List {
-            Section(header: HeaderFooter(text: headerText), footer: HeaderFooter(text: footerText)) {
-                ForEach (acknowledgements) { acknowledgement in
-                    AcknowListRowSwiftUIView(acknowledgement: acknowledgement)
-                }
-            }
-        }
         #endif
+    }
+    
+    /// For custom navigation, this can be used to get the view that displays the acknowledgement contents.
+    public static func acknowView(for acknowledgement: Acknow) -> some View {
+        AcknowSwiftUIView(acknowledgement: acknowledgement)
     }
 }
 
@@ -119,11 +127,18 @@ public struct AcknowListRowSwiftUIView: View {
 
     /// Indicates if the view controller should try to fetch missing licenses from the GitHub API.
     public var canFetchLicenseFromGitHub = true
+    
+    /// Handler to be called when this row was tapped
+    let showHandler: (() -> Void)?
 
     public var body: some View {
         if acknowledgement.text != nil || canFetchLicenseFromGitHubAndIsGitHubRepository(acknowledgement) {
-            NavigationLink(destination: AcknowSwiftUIView(acknowledgement: acknowledgement)) {
-                Text(acknowledgement.title)
+            if let showHandler {
+                Button(acknowledgement.title, action: showHandler)
+            } else {
+                NavigationLink(destination: AcknowSwiftUIView(acknowledgement: acknowledgement)) {
+                    Text(acknowledgement.title)
+                }
             }
         }
         else if let repository = acknowledgement.repository,
