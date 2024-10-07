@@ -57,9 +57,10 @@ public struct Acknow {
 extension Acknow: Equatable, Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(id)
+        hasher.combine(text)
     }
 
     public static func == (lhs: Acknow, rhs: Acknow) -> Bool {
-        lhs.id == rhs.id
+        lhs.id == rhs.id && lhs.text == rhs.text
     }
 }
